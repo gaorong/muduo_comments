@@ -88,10 +88,12 @@ int main()
   bench("/tmp/log");
   fclose(g_file);
 
+  //false为非线程安全的
   g_file = NULL;
   g_logFile.reset(new muduo::LogFile("test_log_st", 500*1000*1000, false));
   bench("test_log_st");
 
+  //线程安全的
   g_logFile.reset(new muduo::LogFile("test_log_mt", 500*1000*1000, true));
   bench("test_log_mt");
   g_logFile.reset();

@@ -19,13 +19,13 @@ LogFile::LogFile(const string& basename,
     flushInterval_(flushInterval),
     checkEveryN_(checkEveryN),
     count_(0),
-    mutex_(threadSafe ? new MutexLock : NULL),
+    mutex_(threadSafe ? new MutexLock : NULL),  //如果是线程安全的则初始化，且智能指针自动帮我们释放
     startOfPeriod_(0),
     lastRoll_(0),
     lastFlush_(0)
 {
   assert(basename.find('/') == string::npos);
-  rollFile();
+  rollFile();   //第一次就滚动日志，其实就是产生一个文件 
 }
 
 LogFile::~LogFile()
@@ -34,7 +34,7 @@ LogFile::~LogFile()
 
 void LogFile::append(const char* logline, int len)
 {
-  if (mutex_)
+  if (mutex_) //如果是线程安全的
   {
     MutexLockGuard lock(*mutex_);
     append_unlocked(logline, len);
@@ -91,8 +91,12 @@ bool LogFile::rollFile()
 {
   time_t now = 0;
   string filename = getLogFileName(basename_, &now);
+
+  //注意这里先除以kRollPerSeconds_后乘kRollPerSeconds表示
+  //对齐至kRollPerSeconds_整数倍，也就是时间调整到当天零点
   time_t start = now / kRollPerSeconds_ * kRollPerSeconds_;
 
+  //如果大于则需要滚动  
   if (now > lastRoll_)
   {
     lastRoll_ = now;
@@ -113,11 +117,12 @@ string LogFile::getLogFileName(const string& basename, time_t* now)
   char timebuf[32];
   struct tm tm;
   *now = time(NULL);
+  //相对于gmtime是个线程安全的函数
   gmtime_r(now, &tm); // FIXME: localtime_r ?
   strftime(timebuf, sizeof timebuf, ".%Y%m%d-%H%M%S.", &tm);
   filename += timebuf;
 
-  filename += ProcessInfo::hostname();
+  filename += ProcessInfo::hostname(); 
 
   char pidbuf[32];
   snprintf(pidbuf, sizeof pidbuf, ".%d", ProcessInfo::pid());

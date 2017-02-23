@@ -62,7 +62,8 @@ int readFile(StringArg filename,
   return file.readToString(maxSize, content, fileSize, modifyTime, createTime);
 }
 
-// not thread safe
+// not thread safe 
+//不是线程安全的，由调用他的上层保证
 class AppendFile : boost::noncopyable
 {
  public:

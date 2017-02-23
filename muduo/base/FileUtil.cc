@@ -25,7 +25,9 @@ FileUtil::AppendFile::AppendFile(StringArg filename)
     writtenBytes_(0)
 {
   assert(fp_);
-  ::setbuffer(fp_, buffer_, sizeof buffer_);
+
+  //自己设置文件缓冲区，大小为sizeof buffer_, 即64k
+  ::setbuffer(fp_, buffer_, sizeof buffer_);   
   // posix_fadvise POSIX_FADV_DONTNEED ?
 }
 
@@ -37,7 +39,9 @@ FileUtil::AppendFile::~AppendFile()
 void FileUtil::AppendFile::append(const char* logline, const size_t len)
 {
   size_t n = write(logline, len);
-  size_t remain = len - n;
+  size_t remain = len - n; //剩余的字节数
+
+  //如果没写完则继续写直到写完为止
   while (remain > 0)
   {
     size_t x = write(logline + n, remain);
@@ -65,6 +69,7 @@ void FileUtil::AppendFile::flush()
 size_t FileUtil::AppendFile::write(const char* logline, size_t len)
 {
   // #undef fwrite_unlocked
+  //以不加锁的方式写入 ，因为已在上层加锁保障了安全， 由LogFile::mutex_; 
   return ::fwrite_unlocked(logline, 1, len, fp_);
 }
 

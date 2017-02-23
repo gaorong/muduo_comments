@@ -19,6 +19,7 @@
 namespace muduo
 {
 
+//获取一些系统信息
 namespace ProcessInfo
 {
   pid_t pid();
