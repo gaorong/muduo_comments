@@ -25,6 +25,7 @@ class Test : boost::noncopyable
   muduo::string name_;
 };
 
+//这里虽然定义为全局变量，但是他会在每个线程都设置一份
 muduo::ThreadLocal<Test> testObj1;
 muduo::ThreadLocal<Test> testObj2;
 

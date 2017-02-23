@@ -28,6 +28,9 @@ class Test : boost::noncopyable
   muduo::string name_;
 };
 
+//单例的ThreadLocal，相当于ThreadLocal只有一份实例
+//但是这一份实例保存的数据在每一个线程都有一个不同的样本
+//注意区分与测试代码: ThreadLocalSingleton_test.cc(为了测试线程的单例)
 #define STL muduo::Singleton<muduo::ThreadLocal<Test> >::instance().value()
 
 void print()
