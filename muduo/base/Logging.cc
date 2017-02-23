@@ -10,9 +10,9 @@
 
 #include <sstream>
 
-namespace muduo
+namespace muduo  
 {
-
+//下面都是全局作用域
 /*
 class LoggerImpl
 {
@@ -34,11 +34,13 @@ __thread char t_errnobuf[512];
 __thread char t_time[32];
 __thread time_t t_lastSecond;
 
+//获得线程各自errorno的详细字符串信息，这是一个全局函数，可以任意调用
 const char* strerror_tl(int savedErrno)
 {
   return strerror_r(savedErrno, t_errnobuf, sizeof t_errnobuf);
 }
 
+//通过环境变量的方式获取日志级别
 Logger::LogLevel initLogLevel()
 {
   if (::getenv("MUDUO_LOG_TRACE"))
@@ -100,11 +102,12 @@ void defaultFlush()
   fflush(stdout);
 }
 
-Logger::OutputFunc g_output = defaultOutput;
+//全局变量
+Logger::OutputFunc g_output = defaultOutput;  //默认到屏幕
 Logger::FlushFunc g_flush = defaultFlush;
 TimeZone g_logTimeZone;
 
-}
+}   //以上全是全局作用域
 
 using namespace muduo;
 
@@ -115,10 +118,15 @@ Logger::Impl::Impl(LogLevel level, int savedErrno, const SourceFile& file, int l
     line_(line),
     basename_(file)
 {
-  formatTime();
-  CurrentThread::tid();
+  //输出格式为:
+  //20130329 09:41:57.9923647 26662 TRACE funcname detailinfo filename:lineno 
+  formatTime();   //格式化时间并输出
+  CurrentThread::tid();  
+  //格式化tid并输出
   stream_ << T(CurrentThread::tidString(), CurrentThread::tidStringLength());
+  //格式化logLevel并输出
   stream_ << T(LogLevelName[level], 6);
+  //如果错误码不是0还需要输出对应的错误码
   if (savedErrno != 0)
   {
     stream_ << strerror_tl(savedErrno) << " (errno=" << savedErrno << ") ";
@@ -153,7 +161,7 @@ void Logger::Impl::formatTime()
   {
     Fmt us(".%06d ", microseconds);
     assert(us.length() == 8);
-    stream_ << T(t_time, 17) << T(us.data(), 8);
+    stream_ << T(t_time, 17) << T(us.data(), 8);  //格式化后输出到缓冲区
   }
   else
   {
@@ -189,15 +197,16 @@ Logger::Logger(SourceFile file, int line, bool toAbort)
 {
 }
 
-Logger::~Logger()
+Logger::~Logger()   //处理持久化相关事宜
 {
   impl_.finish();
+  //用引用复制到缓冲区中
   const LogStream::Buffer& buf(stream().buffer());
-  g_output(buf.data(), buf.length());
+  g_output(buf.data(), buf.length());  
   if (impl_.level_ == FATAL)
   {
     g_flush();
-    abort();
+    abort();       //如果是FATAL，则退出程序
   }
 }
 
@@ -206,11 +215,12 @@ void Logger::setLogLevel(Logger::LogLevel level)
   g_logLevel = level;
 }
 
+//设置输出，OutputFunc是个函数指针，在OutputFunc函数内部负责具体写入操作
 void Logger::setOutput(OutputFunc out)
 {
   g_output = out;
 }
-
+//同setOuput使思路一样
 void Logger::setFlush(FlushFunc flush)
 {
   g_flush = flush;

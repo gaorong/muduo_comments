@@ -39,6 +39,7 @@ size_t convert(char buf[], T value)
 
   do
   {
+    //lsd: last digital最后一个数字
     int lsd = static_cast<int>(i % 10);
     i /= 10;
     *p++ = zero[lsd];
@@ -54,6 +55,8 @@ size_t convert(char buf[], T value)
   return p - buf;
 }
 
+
+//uintptr_t对于32位平台就是unsigned int,对于64位平台就是unsigned long int
 size_t convertHex(char buf[], uintptr_t value)
 {
   uintptr_t i = value;
@@ -97,16 +100,20 @@ void FixedBuffer<SIZE>::cookieEnd()
 
 void LogStream::staticCheck()
 {
+  //这是一系列编译时断言
+  //digits10意思是 Returns the number of decimal digits that the type can represent without loss of precision.
+  //十进制可以表示的位数
   BOOST_STATIC_ASSERT(kMaxNumericSize - 10 > std::numeric_limits<double>::digits10);
   BOOST_STATIC_ASSERT(kMaxNumericSize - 10 > std::numeric_limits<long double>::digits10);
   BOOST_STATIC_ASSERT(kMaxNumericSize - 10 > std::numeric_limits<long>::digits10);
   BOOST_STATIC_ASSERT(kMaxNumericSize - 10 > std::numeric_limits<long long>::digits10);
 }
 
+//成员模板
 template<typename T>
 void LogStream::formatInteger(T v)
 {
-  if (buffer_.avail() >= kMaxNumericSize)
+  if (buffer_.avail() >= kMaxNumericSize)   //够存放这个数据
   {
     size_t len = convert(buffer_.current(), v);
     buffer_.add(len);
@@ -151,7 +158,7 @@ LogStream& LogStream::operator<<(unsigned long v)
 
 LogStream& LogStream::operator<<(long long v)
 {
-  formatInteger(v);
+  formatInteger(v);    //调用成员模板可以自动推导类型
   return *this;
 }
 
@@ -161,8 +168,11 @@ LogStream& LogStream::operator<<(unsigned long long v)
   return *this;
 }
 
+
+//输出一个指针
 LogStream& LogStream::operator<<(const void* p)
-{
+{  
+  //uintptr_t对于32位平台就是unsigned int,对于64位平台就是unsigned long int
   uintptr_t v = reinterpret_cast<uintptr_t>(p);
   if (buffer_.avail() >= kMaxNumericSize)
   {
@@ -189,14 +199,15 @@ LogStream& LogStream::operator<<(double v)
 template<typename T>
 Fmt::Fmt(const char* fmt, T val)
 {
+ //断言T是算数类型
   BOOST_STATIC_ASSERT(boost::is_arithmetic<T>::value == true);
-
+  //将这个数字按照fmt格式化到buf中
   length_ = snprintf(buf_, sizeof buf_, fmt, val);
   assert(static_cast<size_t>(length_) < sizeof buf_);
 }
 
 // Explicit instantiations
-
+//特化，只能用这些类型
 template Fmt::Fmt(const char* fmt, char);
 
 template Fmt::Fmt(const char* fmt, short);

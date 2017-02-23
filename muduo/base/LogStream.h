@@ -19,6 +19,7 @@ namespace detail
 const int kSmallBuffer = 4000;
 const int kLargeBuffer = 4000*1000;
 
+//SIZE为非类型参数
 template<int SIZE>
 class FixedBuffer : boost::noncopyable
 {
@@ -26,6 +27,7 @@ class FixedBuffer : boost::noncopyable
   FixedBuffer()
     : cur_(data_)
   {
+  	//目前cookieStart并没有什么用
     setCookie(cookieStart);
   }
 
@@ -37,6 +39,7 @@ class FixedBuffer : boost::noncopyable
   void append(const char* /*restrict*/ buf, size_t len)
   {
     // FIXME: append partially
+    //目前并没有实现如果内存不够用的情况
     if (implicit_cast<size_t>(avail()) > len)
     {
       memcpy(cur_, buf, len);
@@ -56,7 +59,7 @@ class FixedBuffer : boost::noncopyable
   void bzero() { ::bzero(data_, sizeof data_); }
 
   // for used by GDB
-  const char* debugString();
+  const char* debugString();	//在缓冲区后面加'\0'，把他当成一个字符串
   void setCookie(void (*cookie)()) { cookie_ = cookie; }
   // for used by unit test
   string toString() const { return string(data_, length()); }
@@ -69,16 +72,17 @@ class FixedBuffer : boost::noncopyable
   static void cookieEnd();
 
   void (*cookie_)();
-  char data_[SIZE];
-  char* cur_;
+  char data_[SIZE];	
+  char* cur_;		//目前的位置
 };
 
 }
 
 class LogStream : boost::noncopyable
 {
-  typedef LogStream self;
+  typedef LogStream self;    //这个用法厉害了
  public:
+ 	//Buffer就是FixedBuffer
   typedef detail::FixedBuffer<detail::kSmallBuffer> Buffer;
 
   self& operator<<(bool v)
@@ -86,7 +90,7 @@ class LogStream : boost::noncopyable
     buffer_.append(v ? "1" : "0", 1);
     return *this;
   }
-
+  //下面这几个都是用int实现的
   self& operator<<(short);
   self& operator<<(unsigned short);
   self& operator<<(int);
@@ -164,8 +168,9 @@ class LogStream : boost::noncopyable
   void resetBuffer() { buffer_.reset(); }
 
  private:
-  void staticCheck();
+  void staticCheck();   
 
+  //这是一个成员模板
   template<typename T>
   void formatInteger(T);
 
@@ -177,8 +182,10 @@ class LogStream : boost::noncopyable
 class Fmt // : boost::noncopyable
 {
  public:
+
+   //成员模板，调用时可以自动推导类型
   template<typename T>
-  Fmt(const char* fmt, T val);
+  Fmt(const char* fmt, T val);  //将val按照fmt格式化到buf中
 
   const char* data() const { return buf_; }
   int length() const { return length_; }
