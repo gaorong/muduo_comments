@@ -15,6 +15,7 @@ namespace muduo
 {
 
 //封装线程特定数据TSD
+
 template<typename T>
 class ThreadLocal : boost::noncopyable
 {
