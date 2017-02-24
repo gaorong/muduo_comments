@@ -35,12 +35,16 @@ class Channel : boost::noncopyable
 {
  public:
   typedef boost::function<void()> EventCallback;
-  typedef boost::function<void(Timestamp)> ReadEventCallback;
+  typedef boost::function<void(Timestamp)> ReadEventCallback; //读事件的回调处理需要一个时间戳
 
+
+  //构造函数中传递所属的EvenLoop，他只能被一个EvenLoop处理
   Channel(EventLoop* loop, int fd);
   ~Channel();
 
   void handleEvent(Timestamp receiveTime);
+
+  //设置一些事件就绪的回调函数
   void setReadCallback(const ReadEventCallback& cb)
   { readCallback_ = cb; }
   void setWriteCallback(const EventCallback& cb)
@@ -64,17 +68,18 @@ class Channel : boost::noncopyable
   /// prevent the owner object being destroyed in handleEvent.
   void tie(const boost::shared_ptr<void>&);
 
-  int fd() const { return fd_; }
-  int events() const { return events_; }
+  int fd() const { return fd_; }  //channel对应的文件描述符
+  int events() const { return events_; }   //返回注册的事件
   void set_revents(int revt) { revents_ = revt; } // used by pollers
   // int revents() const { return revents_; }
-  bool isNoneEvent() const { return events_ == kNoneEvent; }
+  bool isNoneEvent() const { return events_ == kNoneEvent; }  
 
-  void enableReading() { events_ |= kReadEvent; update(); }
+  //关注它的可读事件，并用update将通道注册到EvenLoop中
+  void enableReading() { events_ |= kReadEvent; update(); }  
   void disableReading() { events_ &= ~kReadEvent; update(); }
   void enableWriting() { events_ |= kWriteEvent; update(); }
   void disableWriting() { events_ &= ~kWriteEvent; update(); }
-  void disableAll() { events_ = kNoneEvent; update(); }
+  void disableAll() { events_ = kNoneEvent; update(); } //不在关注事件
   bool isWriting() const { return events_ & kWriteEvent; }
   bool isReading() const { return events_ & kReadEvent; }
 
@@ -94,24 +99,27 @@ class Channel : boost::noncopyable
  private:
   static string eventsToString(int fd, int ev);
 
-  void update();
+  void update();  
   void handleEventWithGuard(Timestamp receiveTime);
 
-  static const int kNoneEvent;
+  //设置一些常量
+  static const int kNoneEvent;   
   static const int kReadEvent;
   static const int kWriteEvent;
 
-  EventLoop* loop_;
-  const int  fd_;
-  int        events_;
-  int        revents_; // it's the received event types of epoll or poll
-  int        index_; // used by Poller.
-  bool       logHup_;
+  EventLoop* loop_;    //所属的EvenLoop对象
+  const int  fd_;	   // 文件描述符，但不负责关闭该文件描述符
+  int        events_;  // 关注的事件
+  int        revents_; // it's the received event types of epoll or poll  返回的事件
+
+  //表示在poll的事件数组中的序号，如果index_小于0，则表示还未添加到数组中
+  int        index_; // used by Poller.  
+  bool       logHup_;   
 
   boost::weak_ptr<void> tie_;
   bool tied_;
-  bool eventHandling_;
-  bool addedToLoop_;
+  bool eventHandling_;    //是否处于事件处理中
+  bool addedToLoop_;	  
   ReadEventCallback readCallback_;
   EventCallback writeCallback_;
   EventCallback closeCallback_;

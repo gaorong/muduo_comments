@@ -41,7 +41,7 @@ class PollPoller : public Poller
                           ChannelList* activeChannels) const;
 
   typedef std::vector<struct pollfd> PollFdList;
-  PollFdList pollfds_;
+  PollFdList pollfds_;    //传递给poll的数组
 };
 
 }

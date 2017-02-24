@@ -53,9 +53,11 @@ void Channel::tie(const boost::shared_ptr<void>& obj)
 void Channel::update()
 {
   addedToLoop_ = true;
-  loop_->updateChannel(this);
+  loop_->updateChannel(this);   //直接调用EvenLoop的updateChannel，EvenLop的updateChannel又调用Poller的updateChannel
 }
 
+//在调用remove之前确保调用了disableAll
+//因为EvenLoop调用Poller的removeChannel时会检查是否还又关注的事件
 void Channel::remove()
 {
   assert(isNoneEvent());
@@ -82,8 +84,10 @@ void Channel::handleEvent(Timestamp receiveTime)
 
 void Channel::handleEventWithGuard(Timestamp receiveTime)
 {
-  eventHandling_ = true;
+  eventHandling_ = true;      //正在处理事件
   LOG_TRACE << reventsToString();
+
+  //处理POLLHUB事件,POLLHUB只在OUTPUT的时候产生，都的时候不会产生
   if ((revents_ & POLLHUP) && !(revents_ & POLLIN))
   {
     if (logHup_)
@@ -100,8 +104,9 @@ void Channel::handleEventWithGuard(Timestamp receiveTime)
 
   if (revents_ & (POLLERR | POLLNVAL))
   {
-    if (errorCallback_) errorCallback_();
+    if (errorCallback_) errorCallback_();   //错误
   }
+  //POLLPRI表示紧急事件
   if (revents_ & (POLLIN | POLLPRI | POLLRDHUP))
   {
     if (readCallback_) readCallback_(receiveTime);
@@ -110,15 +115,15 @@ void Channel::handleEventWithGuard(Timestamp receiveTime)
   {
     if (writeCallback_) writeCallback_();
   }
-  eventHandling_ = false;
+  eventHandling_ = false;   //处理事件flag关闭
 }
 
-string Channel::reventsToString() const
+string Channel::reventsToString() const   // for debug 将返回的事件转换为string
 {
   return eventsToString(fd_, revents_);
 }
 
-string Channel::eventsToString() const
+string Channel::eventsToString() const    //for debug, 同上
 {
   return eventsToString(fd_, events_);
 }

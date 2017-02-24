@@ -34,13 +34,15 @@ class Poller;
 class TimerQueue;
 
 ///
-/// Reactor, at most one per thread.
+/// Reactor, at most one per thread.  一个线程最多一个ractor
 ///
 /// This is an interface class, so don't expose too much details.
+
+//接口类
 class EventLoop : boost::noncopyable
 {
  public:
-  typedef boost::function<void()> Functor;
+  typedef boost::function<void()> Functor;   //类型重定义
 
   EventLoop();
   ~EventLoop();  // force out-line dtor, for scoped_ptr members.
@@ -49,7 +51,7 @@ class EventLoop : boost::noncopyable
   /// Loops forever.
   ///
   /// Must be called in the same thread as creation of the object.
-  ///
+  /// 
   void loop();
 
   /// Quits loop.
@@ -113,11 +115,12 @@ class EventLoop : boost::noncopyable
 
   // internal usage
   void wakeup();
-  void updateChannel(Channel* channel);
-  void removeChannel(Channel* channel);
+  void updateChannel(Channel* channel);  //在poller中增加或更新通道
+  void removeChannel(Channel* channel);  //从poller中移除通道
   bool hasChannel(Channel* channel);
 
   // pid_t threadId() const { return threadId_; }
+  //断言是在当前线程
   void assertInLoopThread()
   {
     if (!isInLoopThread())
@@ -149,14 +152,14 @@ class EventLoop : boost::noncopyable
 
   typedef std::vector<Channel*> ChannelList;
 
-  bool looping_; /* atomic */
+  bool looping_; /* atomic */	//是否处于循环
   bool quit_; /* atomic and shared between threads, okay on x86, I guess. */
-  bool eventHandling_; /* atomic */
+  bool eventHandling_; /* atomic */  //是否处于事件处理状态
   bool callingPendingFunctors_; /* atomic */
   int64_t iteration_;
-  const pid_t threadId_;
-  Timestamp pollReturnTime_;
-  boost::scoped_ptr<Poller> poller_;
+  const pid_t threadId_;	// 当前对象所属线程ID
+  Timestamp pollReturnTime_;  //调用poll函数所返回的时间戳
+  boost::scoped_ptr<Poller> poller_;    //只能指针对象，管理poller
   boost::scoped_ptr<TimerQueue> timerQueue_;
   int wakeupFd_;
   // unlike in TimerQueue, which is an internal class,
@@ -165,8 +168,8 @@ class EventLoop : boost::noncopyable
   boost::any context_;
 
   // scratch variables
-  ChannelList activeChannels_;
-  Channel* currentActiveChannel_;
+  ChannelList activeChannels_;   //当前返回的活动通道集合
+  Channel* currentActiveChannel_;   //当前正在处理的活动通道
 
   mutable MutexLock mutex_;
   std::vector<Functor> pendingFunctors_; // @GuardedBy mutex_

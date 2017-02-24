@@ -32,7 +32,7 @@ class Channel;
 class Poller : boost::noncopyable
 {
  public:
-  typedef std::vector<Channel*> ChannelList;
+  typedef std::vector<Channel*> ChannelList;  //关注的频道列表
 
   Poller(EventLoop* loop);
   virtual ~Poller();
@@ -58,9 +58,9 @@ class Poller : boost::noncopyable
     ownerLoop_->assertInLoopThread();
   }
 
- protected:
+ protected:   
   typedef std::map<int, Channel*> ChannelMap;
-  ChannelMap channels_;
+  ChannelMap channels_;   //一个fd和channle的map,通过fd查找channel，需要在子类中使用
 
  private:
   EventLoop* ownerLoop_;

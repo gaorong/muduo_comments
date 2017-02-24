@@ -25,7 +25,9 @@ using namespace muduo::net;
 
 namespace
 {
-__thread EventLoop* t_loopInThisThread = 0;
+// 当前线程EventLoop对象指针
+// 线程局部存储
+__thread EventLoop* t_loopInThisThread = 0;  
 
 const int kPollTimeMs = 10000;
 
@@ -61,12 +63,12 @@ EventLoop* EventLoop::getEventLoopOfCurrentThread()
 }
 
 EventLoop::EventLoop()
-  : looping_(false),
+  : looping_(false),		//构造时候未循环
     quit_(false),
     eventHandling_(false),
     callingPendingFunctors_(false),
     iteration_(0),
-    threadId_(CurrentThread::tid()),
+    threadId_(CurrentThread::tid()),  //初始化为当前线程
     poller_(Poller::newDefaultPoller(this)),
     timerQueue_(new TimerQueue(this)),
     wakeupFd_(createEventfd()),
@@ -74,6 +76,8 @@ EventLoop::EventLoop()
     currentActiveChannel_(NULL)
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
+
+  // 如果当前线程已经创建了EventLoop对象，终止(LOG_FATAL)
   if (t_loopInThisThread)
   {
     LOG_FATAL << "Another EventLoop " << t_loopInThisThread
@@ -96,12 +100,16 @@ EventLoop::~EventLoop()
   wakeupChannel_->disableAll();
   wakeupChannel_->remove();
   ::close(wakeupFd_);
-  t_loopInThisThread = NULL;
+  t_loopInThisThread = NULL;	//置为NULL，表示当前线程再无evenLoop	
 }
 
+
+// 事件循环，该函数不能跨线程调用
+// 只能在创建该对象的线程中调用
 void EventLoop::loop()
 {
-  assert(!looping_);
+  //断言未循环并在当前线程中
+  assert(!looping_);	
   assertInLoopThread();
   looping_ = true;
   quit_ = false;  // FIXME: what if someone calls quit() before loop() ?
@@ -109,9 +117,11 @@ void EventLoop::loop()
 
   while (!quit_)
   {
-    activeChannels_.clear();
+    activeChannels_.clear();   //将活动通道清除
+    //通过poll返回活动通道，存放在activeChannel
     pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
     ++iteration_;
+	//打印
     if (Logger::logLevel() <= Logger::TRACE)
     {
       printActiveChannels();
@@ -121,11 +131,11 @@ void EventLoop::loop()
     for (ChannelList::iterator it = activeChannels_.begin();
         it != activeChannels_.end(); ++it)
     {
-      currentActiveChannel_ = *it;
+      currentActiveChannel_ = *it;  //更新当前正在处理通道
       currentActiveChannel_->handleEvent(pollReturnTime_);
     }
-    currentActiveChannel_ = NULL;
-    eventHandling_ = false;
+    currentActiveChannel_ = NULL;   //将当前正在处理通道置为NULL
+    eventHandling_ = false;    //不在处理通道
     doPendingFunctors();
   }
 
@@ -245,8 +255,8 @@ void EventLoop::cancel(TimerId timerId)
 
 void EventLoop::updateChannel(Channel* channel)
 {
-  assert(channel->ownerLoop() == this);
-  assertInLoopThread();
+  assert(channel->ownerLoop() == this);  //断言channle所属的EvenLoop是自身
+  assertInLoopThread();     //断言EvenLoop是当前线程
   poller_->updateChannel(channel);
 }
 
