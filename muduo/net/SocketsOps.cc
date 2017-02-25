@@ -49,6 +49,7 @@ void setNonBlockAndCloseOnExec(int sockfd)
 
 }
 
+//sockaddr* 与sockaddr_in的区别见:http://kenby.iteye.com/blog/1149001
 const struct sockaddr* sockets::sockaddr_cast(const struct sockaddr_in6* addr)
 {
   return static_cast<const struct sockaddr*>(implicit_cast<const void*>(addr));
@@ -74,9 +75,11 @@ const struct sockaddr_in6* sockets::sockaddr_in6_cast(const struct sockaddr* add
   return static_cast<const struct sockaddr_in6*>(implicit_cast<const void*>(addr));
 }
 
+
+//创建一个非阻塞的套接字
 int sockets::createNonblockingOrDie(sa_family_t family)
 {
-#if VALGRIND
+#if VALGRIND    //如果在调试环境则创建的方法不一样
   int sockfd = ::socket(family, SOCK_STREAM, IPPROTO_TCP);
   if (sockfd < 0)
   {
@@ -124,10 +127,11 @@ int sockets::accept(int sockfd, struct sockaddr_in6* addr)
 #endif
   if (connfd < 0)
   {
-    int savedErrno = errno;
+    int savedErrno = errno;    //先保存错误编号，因为LOG_SYSERR可能会进行系统调用等更改errno，所以先保存一份
     LOG_SYSERR << "Socket::accept";
     switch (savedErrno)
     {
+      
       case EAGAIN:
       case ECONNABORTED:
       case EINTR:
@@ -135,7 +139,7 @@ int sockets::accept(int sockfd, struct sockaddr_in6* addr)
       case EPERM:
       case EMFILE: // per-process lmit of open file desctiptor ???
         // expected errors
-        errno = savedErrno;
+        errno = savedErrno;  //非致命错误，不用终止程序
         break;
       case EBADF:
       case EFAULT:
@@ -145,7 +149,7 @@ int sockets::accept(int sockfd, struct sockaddr_in6* addr)
       case ENOMEM:
       case ENOTSOCK:
       case EOPNOTSUPP:
-        // unexpected errors
+        // unexpected errors   //这些都是致命错误，需要调用LOG_FATAL终止程序
         LOG_FATAL << "unexpected error of ::accept " << savedErrno;
         break;
       default:
@@ -165,7 +169,7 @@ ssize_t sockets::read(int sockfd, void *buf, size_t count)
 {
   return ::read(sockfd, buf, count);
 }
-
+// readv与read不同之处在于，接收的数据可以填充到多个缓冲区中
 ssize_t sockets::readv(int sockfd, const struct iovec *iov, int iovcnt)
 {
   return ::readv(sockfd, iov, iovcnt);
@@ -183,7 +187,7 @@ void sockets::close(int sockfd)
     LOG_SYSERR << "sockets::close";
   }
 }
-
+// 只关闭写的这一半
 void sockets::shutdownWrite(int sockfd)
 {
   if (::shutdown(sockfd, SHUT_WR) < 0)
@@ -192,27 +196,31 @@ void sockets::shutdownWrite(int sockfd)
   }
 }
 
+
+// 将地址转换为ip:port的新式保存到buf中 
 void sockets::toIpPort(char* buf, size_t size,
                        const struct sockaddr* addr)
 {
   toIp(buf,size, addr);
   size_t end = ::strlen(buf);
   const struct sockaddr_in* addr4 = sockaddr_in_cast(addr);
+  //转换端口
   uint16_t port = sockets::networkToHost16(addr4->sin_port);
   assert(size > end);
   snprintf(buf+end, size-end, ":%u", port);
 }
 
+//将ip到buf中
 void sockets::toIp(char* buf, size_t size,
                    const struct sockaddr* addr)
 {
-  if (addr->sa_family == AF_INET)
+  if (addr->sa_family == AF_INET)  //IPV4的转换
   {
     assert(size >= INET_ADDRSTRLEN);
     const struct sockaddr_in* addr4 = sockaddr_in_cast(addr);
     ::inet_ntop(AF_INET, &addr4->sin_addr, buf, static_cast<socklen_t>(size));
   }
-  else if (addr->sa_family == AF_INET6)
+  else if (addr->sa_family == AF_INET6)   //IPV6的转换
   {
     assert(size >= INET6_ADDRSTRLEN);
     const struct sockaddr_in6* addr6 = sockaddr_in6_cast(addr);
@@ -220,6 +228,8 @@ void sockets::toIp(char* buf, size_t size,
   }
 }
 
+
+//从ip:port构造一个socketaddr_in
 void sockets::fromIpPort(const char* ip, uint16_t port,
                          struct sockaddr_in* addr)
 {
@@ -242,6 +252,8 @@ void sockets::fromIpPort(const char* ip, uint16_t port,
   }
 }
 
+
+//返回socket的错误
 int sockets::getSocketError(int sockfd)
 {
   int optval;
@@ -257,6 +269,7 @@ int sockets::getSocketError(int sockfd)
   }
 }
 
+//获取本地地址
 struct sockaddr_in6 sockets::getLocalAddr(int sockfd)
 {
   struct sockaddr_in6 localaddr;
@@ -269,6 +282,7 @@ struct sockaddr_in6 sockets::getLocalAddr(int sockfd)
   return localaddr;
 }
 
+//获取对等方地址
 struct sockaddr_in6 sockets::getPeerAddr(int sockfd)
 {
   struct sockaddr_in6 peeraddr;
@@ -281,6 +295,7 @@ struct sockaddr_in6 sockets::getPeerAddr(int sockfd)
   return peeraddr;
 }
 
+//判断是否是自己与自己建立的连接
 #if !(__GNUC_PREREQ (4,6))
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif

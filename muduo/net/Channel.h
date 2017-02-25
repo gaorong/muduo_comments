@@ -116,10 +116,12 @@ class Channel : boost::noncopyable
   int        index_; // used by Poller.  
   bool       logHup_;   
 
-  boost::weak_ptr<void> tie_;
+  //下面这个弱引用是为了释放对象的过程中起辅助作用，必要时提升为shared_ptr
+  //防止不该释放的shared_ptr将所指向的对象释放完，适时保留一个副本
+  boost::weak_ptr<void> tie_;  //弱引用，void可以接收任何类型，用于生命周期管理，见:TcpConnection释放过程
   bool tied_;
   bool eventHandling_;    //是否处于事件处理中
-  bool addedToLoop_;	  
+  bool addedToLoop_;	 	 
   ReadEventCallback readCallback_;
   EventCallback writeCallback_;
   EventCallback closeCallback_;

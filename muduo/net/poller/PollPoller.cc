@@ -31,6 +31,7 @@ PollPoller::~PollPoller()
 Timestamp PollPoller::poll(int timeoutMs, ChannelList* activeChannels)
 {
   // XXX pollfds_ shouldn't change
+  //其中timeoutMs用来设置poll的超时时间，如果超时还未收到消息则答应nothing happend
   int numEvents = ::poll(&*pollfds_.begin(), pollfds_.size(), timeoutMs);
   int savedErrno = errno;
   Timestamp now(Timestamp::now());

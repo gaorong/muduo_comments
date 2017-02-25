@@ -29,11 +29,12 @@ const struct sockaddr* sockaddr_cast(const struct sockaddr_in6* addr);
 /// Wrapper of sockaddr_in.
 ///
 /// This is an POD interface class.
-class InetAddress : public muduo::copyable
+class InetAddress : public muduo::copyable  //可以拷贝
 {
  public:
   /// Constructs an endpoint with given port number.
-  /// Mostly used in TcpServer listening.
+  /// Mostly used in TcpServer listening.  
+  // 仅仅指定port，不指定ip，则ip为INADDR_ANY或INADDR_LOOPBACK
   explicit InetAddress(uint16_t port = 0, bool loopbackOnly = false, bool ipv6 = false);
 
   /// Constructs an endpoint with given ip and port.
@@ -60,6 +61,7 @@ class InetAddress : public muduo::copyable
   const struct sockaddr* getSockAddr() const { return sockets::sockaddr_cast(&addr6_); }
   void setSockAddrInet6(const struct sockaddr_in6& addr6) { addr6_ = addr6; }
 
+  //返回网络字节序的ip
   uint32_t ipNetEndian() const;
   uint16_t portNetEndian() const { return addr_.sin_port; }
 
@@ -69,11 +71,11 @@ class InetAddress : public muduo::copyable
   static bool resolve(StringArg hostname, InetAddress* result);
   // static std::vector<InetAddress> resolveAll(const char* hostname, uint16_t port = 0);
 
- private:
+ private:     //只有下面的数据成员，是对socketaddr_in的封装
   union
   {
     struct sockaddr_in addr_;
-    struct sockaddr_in6 addr6_;
+    struct sockaddr_in6 addr6_;   
   };
 };
 

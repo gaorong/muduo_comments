@@ -28,6 +28,10 @@ class InetAddress;
 ///
 /// Acceptor of incoming TCP connections.
 ///
+
+//参见测试程序gaorongTest/Reactor_test07
+//Accepter其实就是一个简单的fd和channel，只不过多了一些初始化的工作:bind,listen
+//accepter封装了fd和channel，增加了一些功能
 class Acceptor : boost::noncopyable
 {
  public:
@@ -46,12 +50,12 @@ class Acceptor : boost::noncopyable
  private:
   void handleRead();
 
-  EventLoop* loop_;
-  Socket acceptSocket_;
-  Channel acceptChannel_;
-  NewConnectionCallback newConnectionCallback_;
-  bool listenning_;
-  int idleFd_;
+  EventLoop* loop_;			//channle所属的事件循环
+  Socket acceptSocket_;		//对应的socket
+  Channel acceptChannel_;	//socket的channel
+  NewConnectionCallback newConnectionCallback_;  //accrpt后调用的用户回调函数
+  bool listenning_;			//是否处于监听状态
+  int idleFd_;				//空闲文件描述符，为了防止文件句柄到达上限
 };
 
 }

@@ -71,6 +71,7 @@ class EventLoop : boost::noncopyable
   /// It wakes up the loop, and run the cb.
   /// If in the same loop thread, cb is run within the function.
   /// Safe to call from other threads.
+  // 仔细阅读上面
   void runInLoop(const Functor& cb);
   /// Queues callback in the loop thread.
   /// Runs after finish pooling.
@@ -90,16 +91,19 @@ class EventLoop : boost::noncopyable
   /// Runs callback at 'time'.
   /// Safe to call from other threads.
   ///
+  //在某一时刻运行定时器回调函数
   TimerId runAt(const Timestamp& time, const TimerCallback& cb);
   ///
   /// Runs callback after @c delay seconds.
   /// Safe to call from other threads.
   ///
+  //过一段时间运行定时器回调函数
   TimerId runAfter(double delay, const TimerCallback& cb);
   ///
   /// Runs callback every @c interval seconds.
   /// Safe to call from other threads.
   ///
+  //每隔一段时间运行定时器回掉函数
   TimerId runEvery(double interval, const TimerCallback& cb);
   ///
   /// Cancels the timer.
@@ -152,6 +156,8 @@ class EventLoop : boost::noncopyable
 
   typedef std::vector<Channel*> ChannelList;
 
+
+  //在linux下bool类型本来就是原子操作跟整形不一样!所以不需要加锁
   bool looping_; /* atomic */	//是否处于循环
   bool quit_; /* atomic and shared between threads, okay on x86, I guess. */
   bool eventHandling_; /* atomic */  //是否处于事件处理状态
@@ -160,18 +166,21 @@ class EventLoop : boost::noncopyable
   const pid_t threadId_;	// 当前对象所属线程ID
   Timestamp pollReturnTime_;  //调用poll函数所返回的时间戳
   boost::scoped_ptr<Poller> poller_;    //只能指针对象，管理poller
-  boost::scoped_ptr<TimerQueue> timerQueue_;
-  int wakeupFd_;
+  boost::scoped_ptr<TimerQueue> timerQueue_;   //管理定时器的TimeQueue
+  int wakeupFd_;   //用于evenfd,参见man(2)
   // unlike in TimerQueue, which is an internal class,
   // we don't expose Channel to client.
-  boost::scoped_ptr<Channel> wakeupChannel_;
+  //只有整个channel是组合关系，负责管理wakeupChannel的生命周期
+  boost::scoped_ptr<Channel> wakeupChannel_; //该通道会纳入poller_来管理
   boost::any context_;
 
   // scratch variables
-  ChannelList activeChannels_;   //当前返回的活动通道集合
+  //channelList与EvenLoop是聚合关系，并不管理ChannelList中元素的生命周期
+  ChannelList activeChannels_;      //当前返回的活动通道集合
   Channel* currentActiveChannel_;   //当前正在处理的活动通道
 
-  mutable MutexLock mutex_;
+  mutable MutexLock mutex_;      //pendingFunctors的锁
+  //一个任务队列
   std::vector<Functor> pendingFunctors_; // @GuardedBy mutex_
 };
 

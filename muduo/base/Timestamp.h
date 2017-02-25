@@ -82,6 +82,8 @@ class Timestamp : public muduo::copyable,
   int64_t microSecondsSinceEpoch_;
 };
 
+
+//下面三个函数都是全局函数
 inline bool operator<(Timestamp lhs, Timestamp rhs)
 {
   return lhs.microSecondsSinceEpoch() < rhs.microSecondsSinceEpoch();
@@ -110,6 +112,9 @@ inline double timeDifference(Timestamp high, Timestamp low)
 ///
 /// @return timestamp+seconds as Timestamp
 ///
+
+//这里直接是值传递，因为TimeStamp只有一个数据成员相当于整个对象是个8字节的整数
+//系统在传递参数的时候会做优化不是传递到堆栈中而是到了一个寄存器中
 inline Timestamp addTime(Timestamp timestamp, double seconds)
 {
   int64_t delta = static_cast<int64_t>(seconds * Timestamp::kMicroSecondsPerSecond);

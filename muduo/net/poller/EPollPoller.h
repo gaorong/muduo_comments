@@ -25,6 +25,9 @@ namespace net
 ///
 /// IO Multiplexing with epoll(4).
 ///
+
+
+//EpollPoller跟PollPoller的大致实现一样，就是Channel中的index代表的有变化
 class EPollPoller : public Poller
 {
  public:
@@ -35,8 +38,10 @@ class EPollPoller : public Poller
   virtual void updateChannel(Channel* channel);
   virtual void removeChannel(Channel* channel);
 
- private:
-  static const int kInitEventListSize = 16;
+ private:  
+
+  //初始的events_事件数组的大小为16
+  static const int kInitEventListSize = 16;  
 
   static const char* operationToString(int op);
 
@@ -47,7 +52,7 @@ class EPollPoller : public Poller
   typedef std::vector<struct epoll_event> EventList;
 
   int epollfd_;
-  EventList events_;
+  EventList events_;   //事件数组
 };
 
 }

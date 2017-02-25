@@ -28,13 +28,13 @@ Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reusepor
     acceptSocket_(sockets::createNonblockingOrDie(listenAddr.family())),
     acceptChannel_(loop, acceptSocket_.fd()),
     listenning_(false),
-    idleFd_(::open("/dev/null", O_RDONLY | O_CLOEXEC))
+    idleFd_(::open("/dev/null", O_RDONLY | O_CLOEXEC)) //打开idelFd
 {
   assert(idleFd_ >= 0);
   acceptSocket_.setReuseAddr(true);
   acceptSocket_.setReusePort(reuseport);
   acceptSocket_.bindAddress(listenAddr);
-  acceptChannel_.setReadCallback(
+  acceptChannel_.setReadCallback(		//设置回调函数
       boost::bind(&Acceptor::handleRead, this));
 }
 
@@ -45,30 +45,32 @@ Acceptor::~Acceptor()
   ::close(idleFd_);
 }
 
-void Acceptor::listen()
+
+//调用listen并将调用enableReading将fd添加到事件循环中进行监听
+void Acceptor::listen()  
 {
-  loop_->assertInLoopThread();
+  loop_->assertInLoopThread();		//断言在当前的IO线程中
   listenning_ = true;
-  acceptSocket_.listen();
-  acceptChannel_.enableReading();
+  acceptSocket_.listen();			//开始监听
+  acceptChannel_.enableReading();   //设置为可读，这里就会将acceptPd添加到事件循环中进行监听
 }
 
 void Acceptor::handleRead()
 {
   loop_->assertInLoopThread();
-  InetAddress peerAddr;
+  InetAddress peerAddr;		//对方地址
   //FIXME loop until no more
   int connfd = acceptSocket_.accept(&peerAddr);
   if (connfd >= 0)
   {
     // string hostport = peerAddr.toIpPort();
     // LOG_TRACE << "Accepts of " << hostport;
-    if (newConnectionCallback_)
+    if (newConnectionCallback_)   //如果注册了回掉函数，则调用对调函数
     {
       newConnectionCallback_(connfd, peerAddr);
     }
     else
-    {
+    { //为注册回掉函数，关闭fd
       sockets::close(connfd);
     }
   }
@@ -78,12 +80,12 @@ void Acceptor::handleRead()
     // Read the section named "The special problem of
     // accept()ing when you can't" in libev's doc.
     // By Marc Lehmann, author of libev.
-    if (errno == EMFILE)
+    if (errno == EMFILE)  //太多的文件描述符
     {
-      ::close(idleFd_);
+      ::close(idleFd_);   //关闭空闲的文件描述符
       idleFd_ = ::accept(acceptSocket_.fd(), NULL, NULL);
       ::close(idleFd_);
-      idleFd_ = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
+      idleFd_ = ::open("/dev/null", O_RDONLY | O_CLOEXEC); 
     }
   }
 }

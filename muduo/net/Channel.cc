@@ -46,7 +46,7 @@ Channel::~Channel()
 
 void Channel::tie(const boost::shared_ptr<void>& obj)
 {
-  tie_ = obj;
+  tie_ = obj;   //将shared_ptr赋值给weak_ptr,不会将引用计数加一
   tied_ = true;
 }
 
@@ -70,10 +70,14 @@ void Channel::handleEvent(Timestamp receiveTime)
   boost::shared_ptr<void> guard;
   if (tied_)
   {
-    guard = tie_.lock();
+    guard = tie_.lock();    //引用计数加一
     if (guard)
     {
       handleEventWithGuard(receiveTime);
+      //经过上述处理，到这为止TcpConnection的引用计数为2
+      //一处为guard，一处为boost::function绑定的destryConnection,已经进了Poller的任务队列了
+      //guard出了这就被销毁，另外一个被Looper执行完成之后就被销毁
+	  
     }
   }
   else

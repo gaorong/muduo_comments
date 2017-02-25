@@ -31,11 +31,12 @@ class InetAddress;
 ///
 /// It closes the sockfd when desctructs.
 /// It's thread safe, all operations are delegated to OS.
+//采用RAII方法封装
 class Socket : boost::noncopyable
 {
  public:
   explicit Socket(int sockfd)
-    : sockfd_(sockfd)
+    : sockfd_(sockfd)   //必须是已经创建好的文件描述符
   { }
 
   // Socket(Socket&&) // move constructor in C++11
@@ -61,7 +62,9 @@ class Socket : boost::noncopyable
 
   ///
   /// Enable/disable TCP_NODELAY (disable/enable Nagle's algorithm).
-  ///
+  // Nagle算法可以一定程度上避免网络拥塞
+  // TCP_NODELAY选项可以禁用Nagle算法
+  // 禁用Nagle算法，可以避免连续发包出现延迟，这对于编写低延迟的网络服务很重要
   void setTcpNoDelay(bool on);
 
   ///
@@ -76,7 +79,7 @@ class Socket : boost::noncopyable
 
   ///
   /// Enable/disable SO_KEEPALIVE
-  ///
+  // TCP keepalive是指定期探测连接是否存在，如果应用层有心跳的话，这个选项不是必需要设置的
   void setKeepAlive(bool on);
 
  private:

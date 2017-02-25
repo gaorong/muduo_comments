@@ -11,16 +11,21 @@
 using namespace muduo;
 using namespace muduo::net;
 
-AtomicInt64 Timer::s_numCreated_;
+AtomicInt64 Timer::s_numCreated_;  //默认值为0
+
+
 
 void Timer::restart(Timestamp now)
 {
-  if (repeat_)
+  if (repeat_)  
   {
-    expiration_ = addTime(now, interval_);
+    //如果是重复计时器则重新计算下一个超时时刻:现在再加interval_
+	//addTime为全局函数,定义在TimeStamp中
+	expiration_ = addTime(now, interval_);
   }
   else
   {
+    //如果不是重复计时器则下一个超时时刻为一个非法时间
     expiration_ = Timestamp::invalid();
   }
 }

@@ -42,7 +42,7 @@ TcpConnection::TcpConnection(EventLoop* loop,
                              int sockfd,
                              const InetAddress& localAddr,
                              const InetAddress& peerAddr)
-  : loop_(CHECK_NOTNULL(loop)),
+  : loop_(CHECK_NOTNULL(loop)),  //检查loop为非空
     name_(nameArg),
     state_(kConnecting),
     reading_(true),
@@ -52,6 +52,7 @@ TcpConnection::TcpConnection(EventLoop* loop,
     peerAddr_(peerAddr),
     highWaterMark_(64*1024*1024)
 {
+  // 通道可读事件到来的时候，回调TcpConnection::handleRead，_1是事件发生时间
   channel_->setReadCallback(
       boost::bind(&TcpConnection::handleRead, this, _1));
   channel_->setWriteCallback(
@@ -323,25 +324,28 @@ void TcpConnection::stopReadInLoop()
 void TcpConnection::connectEstablished()
 {
   loop_->assertInLoopThread();
-  assert(state_ == kConnecting);
+  assert(state_ == kConnecting);  //断言处理建立状态
   setState(kConnected);
-  channel_->tie(shared_from_this());
-  channel_->enableReading();
 
+  //shared_from_this将this指针转换为一个shared_ptr对象，因为tie需要传递一个shared_ptr
+  channel_->tie(shared_from_this());
+  channel_->enableReading();   // TcpConnection所对应的通道加入到Poller关注
+
+  //用户的回调函数
   connectionCallback_(shared_from_this());
 }
 
 void TcpConnection::connectDestroyed()
 {
   loop_->assertInLoopThread();
-  if (state_ == kConnected)
+  if (state_ == kConnected)  
   {
     setState(kDisconnected);
     channel_->disableAll();
-
+    //如果没有回掉过用户的回调函数就回掉，否则就不在回掉了
     connectionCallback_(shared_from_this());
   }
-  channel_->remove();
+  channel_->remove();    //从Looper中删除
 }
 
 void TcpConnection::handleRead(Timestamp receiveTime)
@@ -351,13 +355,14 @@ void TcpConnection::handleRead(Timestamp receiveTime)
   ssize_t n = inputBuffer_.readFd(channel_->fd(), &savedErrno);
   if (n > 0)
   {
+   // 注册的回调函数
     messageCallback_(shared_from_this(), &inputBuffer_, receiveTime);
   }
-  else if (n == 0)
+  else if (n == 0)  //处理断开连接
   {
     handleClose();
-  }
-  else
+  } 
+  else   //否则处理错误
   {
     errno = savedErrno;
     LOG_SYSERR << "TcpConnection::handleRead";
@@ -414,10 +419,24 @@ void TcpConnection::handleClose()
   setState(kDisconnected);
   channel_->disableAll();
 
+  //返回自身的shared_ptr对象，TcpConnection的引用计数又加1
+  //在断开的过程中，到此为止有TcpConnection的引用计数为3
+  //第一处在TcpServer的connecton列表里
+  //第二处在Channel::handeldEvent中提升了一个
+  //第三处是下面的guardThis，
   TcpConnectionPtr guardThis(shared_from_this());
-  connectionCallback_(guardThis);
+  connectionCallback_(guardThis);  //回调了用户的连接到来的回调函数函数
+
+
   // must be the last line
-  closeCallback_(guardThis);
+  closeCallback_(guardThis); // 调用TcpServer::removeConnection
+
+
+  //closeCallback调用完成之后，TcpConnection的引用计数为3
+  //与上面的变化是: TcpServer的connection列表中的被删除，
+  //但是在用boost::function的时候又增加一个，所以一增一减还是3
+  
+  //但是出了这个函数之后TcpConnection的引用计数就变为2，guardThis被析构了
 }
 
 void TcpConnection::handleError()

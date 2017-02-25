@@ -21,7 +21,7 @@
 // INADDR_ANY use (type)value casting.
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 static const in_addr_t kInaddrAny = INADDR_ANY;
-static const in_addr_t kInaddrLoopback = INADDR_LOOPBACK;
+static const in_addr_t kInaddrLoopback = INADDR_LOOPBACK;   //本地回环地址
 #pragma GCC diagnostic error "-Wold-style-cast"
 
 //     /* Structure describing an Internet socket address.  */

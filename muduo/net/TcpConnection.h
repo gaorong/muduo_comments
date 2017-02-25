@@ -42,6 +42,24 @@ class Socket;
 class TcpConnection : boost::noncopyable,
                       public boost::enable_shared_from_this<TcpConnection>
 {
+
+//该类继承了enable_shared_from_this是为了使用shared_from_this函数
+//shared_from_this函数可以保证调用的过程中引用计数加一，而不是新创建一个对象
+//参见案例gaorongTest/Esft.cpp
+
+
+//TcpConnection的生命周期释放过程:
+//当一个tcp连接关闭的时候，首先触发Poller的可读事件，调用Channel::handledEvent来处理
+//然后调用TcpConnection::handledread处理，handledRead经过read后发现返回字节为0
+//继续调用TcpCOnnecton::handledClose，在这里面会调用tcpServer注册的回调函数removeConnection
+//TcpServer::removeConnection会将这个TcpConnection从它的连接列表中删除
+//但是此时不能直接delete TcpConnection这个对象，因为TcpConnnection对象中
+//的channel还在函数调用栈中调用handledEvent，此时如果直接delete TcpConnection
+//会将channel也delete掉，程序会出现core dump错误，所以需要等channel::handeledEvent
+//执行完毕之后再delete TcpConnection对象，这就用到shared_ptr。
+
+
+
  public:
   /// Constructs a TcpConnection with a connected sockfd
   ///
@@ -106,7 +124,8 @@ class TcpConnection : boost::noncopyable,
   Buffer* outputBuffer()
   { return &outputBuffer_; }
 
-  /// Internal use only.
+  
+  /// Internal use only.  只在内部使用，由TcpServer注册，而非用户
   void setCloseCallback(const CloseCallback& cb)
   { closeCallback_ = cb; }
 
@@ -133,19 +152,22 @@ class TcpConnection : boost::noncopyable,
   void stopReadInLoop();
 
   EventLoop* loop_;
-  const string name_;
-  StateE state_;  // FIXME: use atomic variable
+  const string name_;  //连接名称
+  //连接状态，枚举类型
+  StateE state_;  // FIXME: use atomic variable  
   bool reading_;
   // we don't expose those classes to client.
   boost::scoped_ptr<Socket> socket_;
   boost::scoped_ptr<Channel> channel_;
-  const InetAddress localAddr_;
-  const InetAddress peerAddr_;
+  const InetAddress localAddr_;   //本地地址
+  const InetAddress peerAddr_;	  //对等地址
+  
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;
   HighWaterMarkCallback highWaterMarkCallback_;
   CloseCallback closeCallback_;
+
   size_t highWaterMark_;
   Buffer inputBuffer_;
   Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.

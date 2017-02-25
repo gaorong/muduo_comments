@@ -37,16 +37,6 @@
 //
 // Arghh!  I wish C++ literals were automatically of type "string".
 
-/*
-有两个变量const char* s1;  std::string s2;
-如果一个函数定义为void foo(const char*); 则s2不能传递进来，除非用s2.c_str()但是这样代码不够直观
-如果将函数定义为void foo(const std::string& x); 此时s1,s2都可以传递，但是s1传递的时候会进行内存拷贝，效率较低，所以muduo库中实现了StringPiece类。用以实现高效的字符串传递
-
-*/
-//用以实现高效的字符串传递
-//void foo( const StringPiece& x)
-//这里既可以用const char*,也可以用std::string做为参数
-//并且不涉及内存拷贝
 
 #ifndef MUDUO_BASE_STRINGPIECE_H
 #define MUDUO_BASE_STRINGPIECE_H
@@ -62,7 +52,7 @@
 namespace muduo {
 
 // For passing C-style string argument to a function.
-class StringArg // copyable
+class StringArg // copyable   //其实就是一个char*
 {
  public:
   StringArg(const char* str)
@@ -85,7 +75,18 @@ class StringArg // copyable
   const char* str_;
 };
 
-class StringPiece {
+
+/*
+有两个变量const char* s1;  std::string s2;
+如果一个函数定义为void foo(const char*); 则s2不能传递进来，除非用s2.c_str()但是这样代码不够直观
+如果将函数定义为void foo(const std::string& x); 此时s1,s2都可以传递，但是s1传递的时候会进行内存拷贝，效率较低，所以muduo库中实现了StringPiece类。用以实现高效的字符串传递
+
+*/
+//用以实现高效的字符串传递
+//void foo( const StringPiece& x)
+//这里既可以用const char*,也可以用std::string做为参数
+//并且不涉及内存拷贝
+class StringPiece {    //这个类既可以接收string,又可以接收char*做为参数
  private:
   const char*   ptr_;
   int           length_;

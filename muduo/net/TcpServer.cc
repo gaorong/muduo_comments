@@ -34,6 +34,8 @@ TcpServer::TcpServer(EventLoop* loop,
     messageCallback_(defaultMessageCallback),
     nextConnId_(1)
 {
+  // Acceptor::handleRead函数中会回调用TcpServer::newConnection
+  // _1对应的是socket文件描述符，_2对应的是对等方的地址(InetAddress)
   acceptor_->setNewConnectionCallback(
       boost::bind(&TcpServer::newConnection, this, _1, _2));
 }
@@ -59,15 +61,16 @@ void TcpServer::setThreadNum(int numThreads)
   assert(0 <= numThreads);
   threadPool_->setThreadNum(numThreads);
 }
-
+// 该函数多次调用是无害的
+// 该函数可以跨线程调用
 void TcpServer::start()
 {
   if (started_.getAndSet(1) == 0)
   {
     threadPool_->start(threadInitCallback_);
 
-    assert(!acceptor_->listenning());
-    loop_->runInLoop(
+    assert(!acceptor_->listenning());    //断言accepter未处于监听状态
+    loop_->runInLoop(    //让主线程开始监听，get_pointer返回原生指针
         boost::bind(&Acceptor::listen, get_pointer(acceptor_)));
   }
 }
@@ -79,7 +82,7 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
   char buf[64];
   snprintf(buf, sizeof buf, "-%s#%d", ipPort_.c_str(), nextConnId_);
   ++nextConnId_;
-  string connName = name_ + buf;
+  string connName = name_ + buf;   //连接名称 : servername+ipPort#conntId
 
   LOG_INFO << "TcpServer::newConnection [" << name_
            << "] - new connection [" << connName
@@ -87,15 +90,20 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
   InetAddress localAddr(sockets::getLocalAddr(sockfd));
   // FIXME poll with zero timeout to double confirm the new connection
   // FIXME use make_shared if necessary
+  //创建一个连接
   TcpConnectionPtr conn(new TcpConnection(ioLoop,
                                           connName,
                                           sockfd,
                                           localAddr,
                                           peerAddr));
   connections_[connName] = conn;
+
+  //下面三行都是注册用户的回调函数
   conn->setConnectionCallback(connectionCallback_);
   conn->setMessageCallback(messageCallback_);
   conn->setWriteCompleteCallback(writeCompleteCallback_);
+
+  //下面是注册TcpServer的回调函数
   conn->setCloseCallback(
       boost::bind(&TcpServer::removeConnection, this, _1)); // FIXME: unsafe
   ioLoop->runInLoop(boost::bind(&TcpConnection::connectEstablished, conn));
@@ -112,10 +120,14 @@ void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn)
   loop_->assertInLoopThread();
   LOG_INFO << "TcpServer::removeConnectionInLoop [" << name_
            << "] - connection " << conn->name();
-  size_t n = connections_.erase(conn->name());
+
+  //从连接列表中删除，TcpConnection的引用计数又变为2
+  size_t n = connections_.erase(conn->name());  
   (void)n;
   assert(n == 1);
   EventLoop* ioLoop = conn->getLoop();
+
+  //调用下面语句使得TcpConnection引用计数变为3
   ioLoop->queueInLoop(
       boost::bind(&TcpConnection::connectDestroyed, conn));
 }

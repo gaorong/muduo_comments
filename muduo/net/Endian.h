@@ -20,6 +20,7 @@ namespace net
 {
 namespace sockets
 {
+//完成字节序的转换
 
 // the inline assembler code makes type blur,
 // so we disable warnings for a while.

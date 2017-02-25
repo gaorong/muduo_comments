@@ -29,7 +29,7 @@ namespace
 // 线程局部存储
 __thread EventLoop* t_loopInThisThread = 0;  
 
-const int kPollTimeMs = 10000;
+const int kPollTimeMs = 10000;   //这是默认的超时时间
 
 int createEventfd()
 {
@@ -87,6 +87,8 @@ EventLoop::EventLoop()
   {
     t_loopInThisThread = this;
   }
+
+  //设置wakeupChannel的回掉函数
   wakeupChannel_->setReadCallback(
       boost::bind(&EventLoop::handleRead, this));
   // we are always reading the wakeupfd
@@ -136,44 +138,65 @@ void EventLoop::loop()
     }
     currentActiveChannel_ = NULL;   //将当前正在处理通道置为NULL
     eventHandling_ = false;    //不在处理通道
-    doPendingFunctors();
+    //设计灵活，当前线程也可以处理计算任务(当IO任务不是很多时可以用作计算)
+    doPendingFunctors();   
   }
 
   LOG_TRACE << "EventLoop " << this << " stop looping";
   looping_ = false;
 }
 
+//该函数可以跨线程调用,也就是可以在其它线程中让EvenLoop退出
 void EventLoop::quit()
 {
-  quit_ = true;
+  quit_ = true;   //线程共享的，所以可以直接更改
   // There is a chance that loop() just executes while(!quit_) and exits,
   // then EventLoop destructs, then we are accessing an invalid object.
   // Can be fixed using mutex_ in both places.
-  if (!isInLoopThread())
+  //如果不是当前线程在调用该函数，则当前线程可能正阻塞在poll函数那里
+  //所以需要手动调用wakeup产生一个IO事件唤醒线程，然后线程醒来后处理事件后就会在
+  //下次循环中判断到quit_为true，从而退出事件循环
+  if (!isInLoopThread())  
   {
-    wakeup();
+    wakeup();   //如果不是当前线程则调用wakeup进行唤醒 
   }
 }
 
+
+//这是一种编程思想，当其他线程需要通过这个线程的资源来执行任务的时候，
+//并不是直接再其他线程中访问资源调用函数
+//这样就会造成资源的竞争，需要加锁保证，而现在我们让当前线程
+//为其他线程提供一个接口，其他线程将要执行的任务用这个接口交给当前线程
+//这样当前线程统一处理自己的资源，而不用加锁，唯一需要加锁的地方就是
+//通过接口添加任务的任务队列这个地方，大大减小了锁粒度
+
+//在IO线程中执行某个回调函数，该函数可以跨线程执行
+//可查看测试程序gaorongTests/Reactor_text05
 void EventLoop::runInLoop(const Functor& cb)
 {
-  if (isInLoopThread())
+  if (isInLoopThread())  //如果在当前IO线程中调用，则同步调用cb,即直接调用
   {
     cb();
   }
   else
   {
+    //如果在其他线程中调用该函数，则异步调用，用queueInLoop添加到任务队列终中
     queueInLoop(cb);
   }
 }
 
+
+//加入队列中，等待被执行，该函数可以跨线程调用，即其他线程可以给当前线程添加任务
 void EventLoop::queueInLoop(const Functor& cb)
 {
-  {
+  {	
   MutexLockGuard lock(mutex_);
   pendingFunctors_.push_back(cb);
   }
 
+  //如果不是当前线程(可能阻塞在poll)，需要唤醒 
+  //或者是当前线程但是在正在处理队列中的任务(使得处理完当前队列中的元素后立即在进行下一轮处理，因为在这里又添加了任务)需要唤醒
+  //只有当前IO线程的事件回调中调用queueInLoop才不需要唤醒(因为执行完handleEvent会自然执行doPendingFunctor)
   if (!isInLoopThread() || callingPendingFunctors_)
   {
     wakeup();
@@ -186,9 +209,11 @@ size_t EventLoop::queueSize() const
   return pendingFunctors_.size();
 }
 
+//以下三个函数都是调用addTimer进行添加定时器
+//可查看测试程序gaorongTests/Reactor_test04
 TimerId EventLoop::runAt(const Timestamp& time, const TimerCallback& cb)
 {
-  return timerQueue_->addTimer(cb, time, 0.0);
+  return timerQueue_->addTimer(cb, time, 0.0);  //0.0代表不是一个重复的定时器
 }
 
 TimerId EventLoop::runAfter(double delay, const TimerCallback& cb)
@@ -250,7 +275,7 @@ TimerId EventLoop::runEvery(double interval, TimerCallback&& cb)
 
 void EventLoop::cancel(TimerId timerId)
 {
-  return timerQueue_->cancel(timerId);
+  return timerQueue_->cancel(timerId);  //直接调用timerQueue的
 }
 
 void EventLoop::updateChannel(Channel* channel)
@@ -288,6 +313,7 @@ void EventLoop::abortNotInLoopThread()
 
 void EventLoop::wakeup()
 {
+  //evenfd的缓冲区只有八个字节，所以只需要写一个uint64_t的数值就可以
   uint64_t one = 1;
   ssize_t n = sockets::write(wakeupFd_, &one, sizeof one);
   if (n != sizeof one)
@@ -296,9 +322,11 @@ void EventLoop::wakeup()
   }
 }
 
+//wakeupChannel的回掉函数
 void EventLoop::handleRead()
 {
   uint64_t one = 1;
+  //内部调用的还是::read函数
   ssize_t n = sockets::read(wakeupFd_, &one, sizeof one);
   if (n != sizeof one)
   {
@@ -306,14 +334,24 @@ void EventLoop::handleRead()
   }
 }
 
+// 1. 不是简单地在临界区内依次调用Functor，
+//而是把回调列表swap到functors中，这样一方面减小了临界区的长度
+//（意味着不会阻塞其它线程的queueInLoop()添加任务到pendingFunctors_），另一方面，也避免了死
+//锁（因为Functor可能再次调用queueInLoop()添加任务到pendingFunctors_）
+
+//2. 由于doPendingFunctors()调用的Functor可能再次调用queueInLoop(cb)添加任务到pendingFunctors_，这时，
+//queueInLoop()就必须wakeup()，否则新增的cb可能就不能及时调用了
+
+//3. muduo没有反复执行doPendingFunctors()直到pendingFunctors为空，
+//这是有意的，否则IO线程可能陷入死循环，无法处理IO事件。
 void EventLoop::doPendingFunctors()
 {
   std::vector<Functor> functors;
-  callingPendingFunctors_ = true;
+  callingPendingFunctors_ = true;  //打开正在处理任务的flag
 
   {
   MutexLockGuard lock(mutex_);
-  functors.swap(pendingFunctors_);
+  functors.swap(pendingFunctors_);  //这样效率高
   }
 
   for (size_t i = 0; i < functors.size(); ++i)

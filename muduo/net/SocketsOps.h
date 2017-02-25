@@ -19,6 +19,7 @@ namespace net
 {
 namespace sockets
 {
+//对socket函数进行封装, 都是在socket命名空间下的函数
 
 ///
 /// Creates a non-blocking socket file descriptor,
