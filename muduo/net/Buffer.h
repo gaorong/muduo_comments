@@ -42,6 +42,9 @@ namespace net
 class Buffer : public muduo::copyable
 {
  public:
+
+  //参阅muduo manual by chengshuo
+  //两个常数分别指示上图中prepend bytes和writable bytes的大小
   static const size_t kCheapPrepend = 8;
   static const size_t kInitialSize = 1024;
 
@@ -59,7 +62,7 @@ class Buffer : public muduo::copyable
   // NOTE: implicit move-ctor is added in g++ 4.6
 
   void swap(Buffer& rhs)
-  {
+  {		//两个缓冲区交换
     buffer_.swap(rhs.buffer_);
     std::swap(readerIndex_, rhs.readerIndex_);
     std::swap(writerIndex_, rhs.writerIndex_);
@@ -74,10 +77,10 @@ class Buffer : public muduo::copyable
   size_t prependableBytes() const
   { return readerIndex_; }
 
-  const char* peek() const
+  const char* peek() const	//返回读的位置
   { return begin() + readerIndex_; }
 
-  const char* findCRLF() const
+  const char* findCRLF() const  //寻找\r\n
   {
     // FIXME: replace with memmem()?
     const char* crlf = std::search(peek(), beginWrite(), kCRLF, kCRLF+2);
@@ -85,7 +88,8 @@ class Buffer : public muduo::copyable
   }
 
   const char* findCRLF(const char* start) const
-  {
+  {  
+    //从指定位置开始查找\r\n
     assert(peek() <= start);
     assert(start <= beginWrite());
     // FIXME: replace with memmem()?
@@ -110,32 +114,32 @@ class Buffer : public muduo::copyable
   // retrieve returns void, to prevent
   // string str(retrieve(readableBytes()), readableBytes());
   // the evaluation of two functions are unspecified
-  void retrieve(size_t len)
+  void retrieve(size_t len)		//取回数据，注意只是移动指针，不返回数据
   {
     assert(len <= readableBytes());
     if (len < readableBytes())
     {
-      readerIndex_ += len;
+      readerIndex_ += len;		//读指针向后移动
     }
     else
     {
-      retrieveAll();
+      retrieveAll();   //如果取完数据，则直接回到初始位置
     }
   }
 
-  void retrieveUntil(const char* end)
+  void retrieveUntil(const char* end)   //取回直到某一个位置
   {
     assert(peek() <= end);
     assert(end <= beginWrite());
     retrieve(end - peek());
   }
 
-  void retrieveInt64()
+  void retrieveInt64()   //取回8个字节
   {
     retrieve(sizeof(int64_t));
   }
 
-  void retrieveInt32()
+  void retrieveInt32()   //取回4个字节
   {
     retrieve(sizeof(int32_t));
   }
@@ -145,7 +149,7 @@ class Buffer : public muduo::copyable
     retrieve(sizeof(int16_t));
   }
 
-  void retrieveInt8()
+  void retrieveInt8()   //取回两个字节
   {
     retrieve(sizeof(int8_t));
   }
@@ -156,7 +160,7 @@ class Buffer : public muduo::copyable
     writerIndex_ = kCheapPrepend;
   }
 
-  string retrieveAllAsString()
+  string retrieveAllAsString()  //把所有的数据取回，并返回字符串
   {
     return retrieveAsString(readableBytes());
   }
@@ -169,7 +173,7 @@ class Buffer : public muduo::copyable
     return result;
   }
 
-  StringPiece toStringPiece() const
+  StringPiece toStringPiece() const		//将缓冲区转换为一个StringPiece
   {
     return StringPiece(peek(), static_cast<int>(readableBytes()));
   }
@@ -191,11 +195,12 @@ class Buffer : public muduo::copyable
     append(static_cast<const char*>(data), len);
   }
 
+  //确保缓冲区可写的空间>=len，如果不足则扩充
   void ensureWritableBytes(size_t len)
   {
     if (writableBytes() < len)
     {
-      makeSpace(len);
+      makeSpace(len);  //扩充空间
     }
     assert(writableBytes() >= len);
   }
@@ -218,7 +223,7 @@ class Buffer : public muduo::copyable
     writerIndex_ -= len;
   }
 
-  ///
+  /// 将int64_t以网络字节序添加到缓冲区中
   /// Append int64_t using network endian
   ///
   void appendInt64(int64_t x)
@@ -359,13 +364,16 @@ class Buffer : public muduo::copyable
     std::copy(d, d+len, begin()+readerIndex_);
   }
 
+  //伸缩空间，保留reverse个字节
   void shrink(size_t reserve)
   {
     // FIXME: use vector::shrink_to_fit() in C++ 11 if possible.
     Buffer other;
     other.ensureWritableBytes(readableBytes()+reserve);
     other.append(toStringPiece());
-    swap(other);
+    swap(other);   //交换空间，
+
+	//函数退出后other局部变量空间就会自动释放，避免了手动释放空间
   }
 
   size_t internalCapacity() const
@@ -391,11 +399,13 @@ class Buffer : public muduo::copyable
   {
     if (writableBytes() + prependableBytes() < len + kCheapPrepend)
     {
+      // 如果可写的空间加前面预留的空间(这个空间可能变大)还不足以存放，才进行扩充
       // FIXME: move readable data
       buffer_.resize(writerIndex_+len);
     }
     else
     {
+      //需要数据挪动
       // move readable data to the front, make space inside buffer
       assert(kCheapPrepend < readerIndex_);
       size_t readable = readableBytes();
@@ -409,9 +419,9 @@ class Buffer : public muduo::copyable
   }
 
  private:
-  std::vector<char> buffer_;
-  size_t readerIndex_;
-  size_t writerIndex_;
+  std::vector<char> buffer_;	//vector用于替代固定大小数组
+  size_t readerIndex_;		//读位置
+  size_t writerIndex_;		//写位置
 
   static const char kCRLF[];
 };

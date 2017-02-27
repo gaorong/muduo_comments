@@ -33,6 +33,9 @@ class EventLoopThreadPool;
 /// TCP server, supports single-threaded and thread-pool models.
 ///
 /// This is an interface class, so don't expose too much details.
+
+//tcpServer包括一个accepter(管理listenfd及其channel_),
+//管理一个EvenLoop线程池(处理TcpConnection事件)，和一个连接对象的map,
 class TcpServer : boost::noncopyable
 {
 
@@ -113,11 +116,11 @@ class TcpServer : boost::noncopyable
   const string ipPort_;   //服务器的ipport
   const string name_;     //服务器的名字
   boost::scoped_ptr<Acceptor> acceptor_; // avoid revealing Acceptor 用智能指针管理ptr
-  boost::shared_ptr<EventLoopThreadPool> threadPool_;
+  boost::shared_ptr<EventLoopThreadPool> threadPool_;  //EvenLoop线程池
   ConnectionCallback connectionCallback_;  //连接到来时回调函数
   MessageCallback messageCallback_;			//消息到来时回掉函数
   WriteCompleteCallback writeCompleteCallback_;
-  ThreadInitCallback threadInitCallback_;
+  ThreadInitCallback threadInitCallback_;   //线程池初始化的回调函数
   AtomicInt32 started_;   //是否已经启动
   // always in loop thread
   int nextConnId_;    //下一个连接id

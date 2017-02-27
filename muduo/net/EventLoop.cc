@@ -48,13 +48,13 @@ class IgnoreSigPipe
  public:
   IgnoreSigPipe()
   {
-    ::signal(SIGPIPE, SIG_IGN);
+    ::signal(SIGPIPE, SIG_IGN);   //忽略SIGPIP信号
     // LOG_TRACE << "Ignore SIGPIPE";
   }
 };
 #pragma GCC diagnostic error "-Wold-style-cast"
 
-IgnoreSigPipe initObj;
+IgnoreSigPipe initObj;     // 相当于是一个全局变量
 }
 
 EventLoop* EventLoop::getEventLoopOfCurrentThread()

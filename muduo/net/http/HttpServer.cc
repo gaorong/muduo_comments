@@ -65,7 +65,7 @@ void HttpServer::onConnection(const TcpConnectionPtr& conn)
 {
   if (conn->connected())
   {
-    conn->setContext(HttpContext());
+    conn->setContext(HttpContext());  // TcpConnection与一个HttpContext绑定
   }
 }
 
@@ -73,6 +73,7 @@ void HttpServer::onMessage(const TcpConnectionPtr& conn,
                            Buffer* buf,
                            Timestamp receiveTime)
 {
+  //获得上下文类，简析协议
   HttpContext* context = boost::any_cast<HttpContext>(conn->getMutableContext());
 
   if (!context->parseRequest(buf, receiveTime))
@@ -81,20 +82,22 @@ void HttpServer::onMessage(const TcpConnectionPtr& conn,
     conn->shutdown();
   }
 
+  //请求解析完毕
   if (context->gotAll())
   {
     onRequest(conn, context->request());
-    context->reset();
+    context->reset();  // 本次请求处理完毕，重置HttpContext，适用于长连接
   }
 }
 
 void HttpServer::onRequest(const TcpConnectionPtr& conn, const HttpRequest& req)
 {
   const string& connection = req.getHeader("Connection");
+  //判断是长链接还是短链接
   bool close = connection == "close" ||
     (req.getVersion() == HttpRequest::kHttp10 && connection != "Keep-Alive");
   HttpResponse response(close);
-  httpCallback_(req, &response);
+  httpCallback_(req, &response);		//回调用户的函数
   Buffer buf;
   response.appendToBuffer(&buf);
   conn->send(&buf);

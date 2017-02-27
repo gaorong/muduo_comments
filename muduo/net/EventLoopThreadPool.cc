@@ -20,7 +20,7 @@ using namespace muduo::net;
 
 
 EventLoopThreadPool::EventLoopThreadPool(EventLoop* baseLoop, const string& nameArg)
-  : baseLoop_(baseLoop),
+  : baseLoop_(baseLoop),  //baseLoop会在创建线程之前就创建好
     name_(nameArg),
     started_(false),
     numThreads_(0),
@@ -31,6 +31,8 @@ EventLoopThreadPool::EventLoopThreadPool(EventLoop* baseLoop, const string& name
 EventLoopThreadPool::~EventLoopThreadPool()
 {
   // Don't delete loop, it's stack variable
+  //threads_是boost::ptr_vector,所以自动销毁
+  //loops_是栈上对象，自动销毁
 }
 
 void EventLoopThreadPool::start(const ThreadInitCallback& cb)
@@ -46,10 +48,11 @@ void EventLoopThreadPool::start(const ThreadInitCallback& cb)
     snprintf(buf, sizeof buf, "%s%d", name_.c_str(), i);
     EventLoopThread* t = new EventLoopThread(cb, buf);
     threads_.push_back(t);
-    loops_.push_back(t->startLoop());
+    loops_.push_back(t->startLoop()); // 启动EventLoopThread线程，在进入事件循环之前，会调用cb
   }
   if (numThreads_ == 0 && cb)
   {
+	// 只有一个EventLoop，即baseLoop，在这个EventLoop进入事件循环之前，调用cb
     cb(baseLoop_);
   }
 }
@@ -60,6 +63,8 @@ EventLoop* EventLoopThreadPool::getNextLoop()
   assert(started_);
   EventLoop* loop = baseLoop_;
 
+  // 如果loops_为空，则loop指向baseLoop_
+  // 如果不为空，按照round-robin（RR，轮叫）的调度方式选择一个EventLoop
   if (!loops_.empty())
   {
     // round-robin

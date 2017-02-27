@@ -68,12 +68,12 @@ bool HttpContext::parseRequest(Buffer* buf, Timestamp receiveTime)
       const char* crlf = buf->findCRLF();
       if (crlf)
       {
-        ok = processRequestLine(buf->peek(), crlf);
+        ok = processRequestLine(buf->peek(), crlf);  //解析请求行
         if (ok)
         {
-          request_.setReceiveTime(receiveTime);
-          buf->retrieveUntil(crlf + 2);
-          state_ = kExpectHeaders;
+          request_.setReceiveTime(receiveTime);  //设置请求时间
+          buf->retrieveUntil(crlf + 2);  //从请求行移除从buf中移除，包括/r/n
+          state_ = kExpectHeaders;  // 将HttpContext状态改为kExpectHeaders
         }
         else
         {

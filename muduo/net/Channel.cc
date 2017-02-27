@@ -91,7 +91,7 @@ void Channel::handleEventWithGuard(Timestamp receiveTime)
   eventHandling_ = true;      //正在处理事件
   LOG_TRACE << reventsToString();
 
-  //处理POLLHUB事件,POLLHUB只在OUTPUT的时候产生，都的时候不会产生
+  //处理POLLHUB事件,POLLHUB只在OUTPUT的时候产生，读的时候不会产生
   if ((revents_ & POLLHUP) && !(revents_ & POLLIN))
   {
     if (logHup_)

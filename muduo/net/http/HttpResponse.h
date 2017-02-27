@@ -22,6 +22,7 @@ namespace net
 {
 
 class Buffer;
+
 class HttpResponse : public muduo::copyable
 {
  public:

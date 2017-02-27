@@ -39,6 +39,9 @@ class Socket;
 /// TCP connection, for both client and server usage.
 ///
 /// This is an interface class, so don't expose too much details.
+
+//TcpConnection管理一个连接
+//管理这个连接的输入输出缓冲区，
 class TcpConnection : boost::noncopyable,
                       public boost::enable_shared_from_this<TcpConnection>
 {
@@ -88,6 +91,7 @@ class TcpConnection : boost::noncopyable,
   void send(Buffer* message);  // this one will swap data
   void shutdown(); // NOT thread safe, no simultaneous calling
   // void shutdownAndForceCloseAfter(double seconds); // NOT thread safe, no simultaneous calling
+
   void forceClose();
   void forceCloseWithDelay(double seconds);
   void setTcpNoDelay(bool on);
@@ -164,14 +168,18 @@ class TcpConnection : boost::noncopyable,
   
   ConnectionCallback connectionCallback_;
   MessageCallback messageCallback_;
-  WriteCompleteCallback writeCompleteCallback_;
-  HighWaterMarkCallback highWaterMarkCallback_;
+  WriteCompleteCallback writeCompleteCallback_;     // 数据发送完毕回调函数，即所有的用户数据都已拷贝到内核缓冲区时回调该函数
+													// outputBuffer_被清空也会回调该函数，可以理解为低水位标回调函数
+  HighWaterMarkCallback highWaterMarkCallback_;    // 高水位标回调函数,也就是outputBuffer撑到一定程度了
   CloseCallback closeCallback_;
 
-  size_t highWaterMark_;
-  Buffer inputBuffer_;
+  size_t highWaterMark_;	//高水位标
+  Buffer inputBuffer_;		//接收缓冲区
   Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.
-  boost::any context_;
+
+  //boost::any是一种可变类型的指针，比void*类型安全，它支持任意类型的类型安全存储以及安全返回
+  //可以在标准库容器中存放不同类型的方法，例如vector<boost::any>
+  boost::any context_;	//绑定一个未知类型的上下文对象
   // FIXME: creationTime_, lastReceiveTime_
   //        bytesReceived_, bytesSent_
 };

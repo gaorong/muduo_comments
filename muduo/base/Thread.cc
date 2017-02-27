@@ -77,7 +77,7 @@ class ThreadNameInitializer
   }
 };
 
-//È«¾Ö±äÁ¿£¬ÏµÍ³Æô¶¯ÔÚmainº¯ÊıÖ®Ç°¾Íµ÷ÓÃ¸Ãº¯Êı
+//È«¾Ö±äÁ¿£¬ÏµÍ³Æô¶¯ÔÚmainº¯ÊıÖ®Ç°¾Íµ÷ÓÃ¸Ãº¯Êı£
 ThreadNameInitializer init;
 
 //±£´æÏß³ÌÊı¾İµÄ½á¹¹Ìå
@@ -105,10 +105,10 @@ struct ThreadData
 
 	//Í¨¹ıboost::weak_ptr::lockº¯Êı»ñµÃshared_ptr¶ÔÏó
     boost::shared_ptr<pid_t> ptid = wkTid_.lock();
-    if (ptid)
+    if (ptid)   
     {
-      *ptid = tid;
-      ptid.reset();
+      *ptid = tid;    //¶ÔËùÖ¸µÄ¶ÔÏó½øĞĞ¸³Öµ
+       ptid.reset();  //ÒıÓÃ¼ÆÊı¼õ1£¬Í£Ö¹¶ÔÖ¸ÕëµÄ¹²Ïí
     }
 
     muduo::CurrentThread::t_threadName = name_.empty() ? "muduoThread" : name_.c_str();

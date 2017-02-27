@@ -26,6 +26,11 @@ class HttpResponse;
 /// It is not a fully HTTP 1.1 compliant server, but provides minimum features
 /// that can communicate with HttpClient and Web browser.
 /// It is synchronous, just like Java Servlet.
+
+//http服务器类。它包含一个TcpServer，在tcpServer之上封装了自己的逻辑
+//给他给tcpServer注册onConnection,和onMessage函数，当tcp返回时会回调该函数
+//他会回调用户注册的httpCallback_函数，该函数传递HttpRequest,指针传递一个HttpResponse
+//最后又通过HttpServer返回给用户
 class HttpServer : boost::noncopyable
 {
  public:
@@ -62,7 +67,7 @@ class HttpServer : boost::noncopyable
   void onRequest(const TcpConnectionPtr&, const HttpRequest&);
 
   TcpServer server_;
-  HttpCallback httpCallback_;
+  HttpCallback httpCallback_;  // 在处理http请求（即调用onRequest）的过程中回调此函数，对请求进行具体的处理
 };
 
 }

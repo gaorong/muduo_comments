@@ -67,16 +67,23 @@ Inspector::Inspector(EventLoop* loop,
       processInspector_(new ProcessInspector),
       systemInspector_(new SystemInspector)
 {
-  assert(CurrentThread::isMainThread());
-  assert(g_globalInspector == 0);
+  assert(CurrentThread::isMainThread());  //断言在主线程中运行
+  assert(g_globalInspector == 0);	
   g_globalInspector = this;
+  //设置http请求回掉函数
   server_.setHttpCallback(boost::bind(&Inspector::onRequest, this, _1, _2));
+  //注册命令
   processInspector_->registerCommands(this);
   systemInspector_->registerCommands(this);
 #ifdef HAVE_TCMALLOC
   performanceInspector_.reset(new PerformanceInspector);
   performanceInspector_->registerCommands(this);
 #endif
+	
+  // 这样子做法是为了防止竞态问题
+  // 如果直接调用start，（当前线程不是loop所属的IO线程，是主线程）那么有可能，当前构造函数还没返回，
+  // HttpServer所在的IO线程可能已经收到了http客户端的请求了（因为这时候HttpServer已启动），那么就会回调
+  // Inspector::onRequest，而这时候构造函数还没返回，也就是说对象还没完全构造好
   loop->runAfter(0, boost::bind(&Inspector::start, this)); // little race condition
 }
 
@@ -86,6 +93,9 @@ Inspector::~Inspector()
   g_globalInspector = NULL;
 }
 
+
+// 如add("proc", "pid", ProcessInspector::pid, "print pid");
+// http://192.168.159.188:12345/proc/pid这个http请求就会相应的调用ProcessInspector::pid来处理
 void Inspector::add(const string& module,
                     const string& command,
                     const Callback& cb,
@@ -112,12 +122,14 @@ void Inspector::start()
   server_.start();
 }
 
+//服务器响应回调函数
 void Inspector::onRequest(const HttpRequest& req, HttpResponse* resp)
 {
   if (req.path() == "/")
   {
     string result;
     MutexLockGuard lock(mutex_);
+	//遍历help_
     for (std::map<string, HelpList>::const_iterator helpListI = helps_.begin();
          helpListI != helps_.end();
          ++helpListI)
@@ -144,6 +156,7 @@ void Inspector::onRequest(const HttpRequest& req, HttpResponse* resp)
   }
   else
   {
+	// 以"/"进行分割，将得到的字符串保存在result中
     std::vector<string> result = split(req.path());
     // boost::split(result, req.path(), boost::is_any_of("/"));
     //std::copy(result.begin(), result.end(), std::ostream_iterator<string>(std::cout, ", "));
@@ -151,10 +164,12 @@ void Inspector::onRequest(const HttpRequest& req, HttpResponse* resp)
     bool ok = false;
     if (result.size() == 0)
     {
+		// 这种情况是错误的，因此ok仍为false
       LOG_DEBUG << req.path();
     }
     else if (result.size() == 1)
     {
+		// 只有module，没有command也是错的，因此ok仍为false
       string module = result[0];
       if (module == "favicon.ico")
       {
@@ -173,22 +188,24 @@ void Inspector::onRequest(const HttpRequest& req, HttpResponse* resp)
     else
     {
       string module = result[0];
+      // 查找module所对应的命令列表
       std::map<string, CommandList>::const_iterator commListI = modules_.find(module);
       if (commListI != modules_.end())
       {
         string command = result[1];
         const CommandList& commList = commListI->second;
+		// 查找command对应的命令
         CommandList::const_iterator it = commList.find(command);
         if (it != commList.end())
         {
-          ArgList args(result.begin()+2, result.end());
+          ArgList args(result.begin()+2, result.end()); // 传递给回调函数的参数表
           if (it->second)
           {
             resp->setStatusCode(HttpResponse::k200Ok);
             resp->setStatusMessage("OK");
             resp->setContentType("text/plain");
             const Callback& cb = it->second;
-            resp->setBody(cb(req.method(), args));
+            resp->setBody(cb(req.method(), args)); // 调用cb将返回的字符串传给setBody
             ok = true;
           }
         }

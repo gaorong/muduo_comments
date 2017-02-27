@@ -123,6 +123,7 @@ string ProcessInspector::username_ = ProcessInfo::username();
 
 void ProcessInspector::registerCommands(Inspector* ins)
 {
+  //第二个参数为函数名，在后面有一一实现
   ins->add("proc", "overview", ProcessInspector::overview, "print basic overview");
   ins->add("proc", "pid", ProcessInspector::pid, "print pid");
   ins->add("proc", "status", ProcessInspector::procStatus, "print /proc/self/status");

@@ -25,7 +25,7 @@ namespace net
 /// Internal class for timer event.
 ///
 
-//Ö»ÊÇ¶Ô¶¨Ê±²Ù×÷¸ß²ã´ÎµÄÒ»¸ö³éÏó
+//åªæ˜¯å¯¹å®šæ—¶æ“ä½œé«˜å±‚æ¬¡çš„ä¸€ä¸ªæŠ½è±¡
 class Timer : boost::noncopyable
 {
  public:
@@ -61,14 +61,13 @@ class Timer : boost::noncopyable
   static int64_t numCreated() { return s_numCreated_.get(); }
 
  private:
-  const TimerCallback callback_;   //¶¨Ê±Æ÷»Øµ÷º¯Êı
-  Timestamp expiration_;			//ÏÂÒ»´ÎµÄ³¬Ê±Ê±¿Ì£¬Ê±¿Ìµ½ºó»Øµ÷º¯Êı
-  const double interval_; 		//³¬Ê±Ê±¼ä¼ä¸ô£¬Èç¹ûÊÇÒ»´ÎĞÔ¶¨Ê±Æ÷£¬¸ÃÖµÎª0
-  const bool repeat_;		//ÊÇ·ñÖØ¸´£¬falseÎªÒ»´ÎĞÔ¶¨Ê±Æ÷
-  const int64_t sequence_;  //¶¨Ê±Æ÷ĞòºÅ
+   const TimerCallback callback_;   //å®šæ—¶å™¨å›è°ƒå‡½æ•°
+  Timestamp expiration_;			//ä¸‹ä¸€æ¬¡çš„è¶…æ—¶æ—¶åˆ»ï¼Œæ—¶åˆ»åˆ°åå›è°ƒå‡½æ•°
+  const double interval_; 		//è¶…æ—¶æ—¶é—´é—´éš”ï¼Œå¦‚æœæ˜¯ä¸€æ¬¡æ€§å®šæ—¶å™¨ï¼Œè¯¥å€¼ä¸º0
+  const bool repeat_;		//æ˜¯å¦é‡å¤ï¼Œfalseä¸ºä¸€æ¬¡æ€§å®šæ—¶å™¨
+  const int64_t sequence_;  //å®šæ—¶å™¨åºå·
 
-  static AtomicInt64 s_numCreated_;  //¶¨Ê±Æ÷¼ÆÊı£¬µ±Ç°ÒÑ¾­´´½¨µÄ¶¨Ê±Æ÷µÄÊıÁ¿£¬Ô­×Ó²Ù×÷Àà
-};
+  static AtomicInt64 s_numCreated_;  //å®šæ—¶å™¨è®¡æ•°ï¼Œå½“å‰å·²ç»åˆ›å»ºçš„å®šæ—¶å™¨çš„æ•°é‡ï¼ŒåŸå­æ“ä½œç±»};
 }
 }
 #endif  // MUDUO_NET_TIMER_H

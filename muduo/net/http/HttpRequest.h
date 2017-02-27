@@ -173,12 +173,11 @@ class HttpRequest : public muduo::copyable
   }
 
  private:
-  Method method_;
-  Version version_;
-  string path_;
-  string query_;
-  Timestamp receiveTime_;
-  std::map<string, string> headers_;
+	 Method method_;	   // 请求方法
+	 Version version_;	   // 协议版本1.0/1.1
+	 string path_;		   // 请求路径
+	 Timestamp receiveTime_;   // 请求时间
+	 std::map<string, string> headers_;    // header列表
 };
 
 }

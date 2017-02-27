@@ -82,17 +82,17 @@ class TcpClient : boost::noncopyable
   void removeConnection(const TcpConnectionPtr& conn);
 
   EventLoop* loop_;
-  ConnectorPtr connector_; // avoid revealing Connector
-  const string name_;
-  ConnectionCallback connectionCallback_;
-  MessageCallback messageCallback_;
-  WriteCompleteCallback writeCompleteCallback_;
-  bool retry_;   // atomic
+  ConnectorPtr connector_;	// 用于主动发起连接
+  const string name_;		// 名称
+  ConnectionCallback connectionCallback_;		// 连接建立回调函数
+  MessageCallback messageCallback_;				// 消息到来回调函数
+  WriteCompleteCallback writeCompleteCallback_;	// 数据发送完毕回调函数
+  bool retry_;   // 重连，是指连接建立之后又断开的时候是否重连
   bool connect_; // atomic
   // always in loop thread
-  int nextConnId_;
-  mutable MutexLock mutex_;
-  TcpConnectionPtr connection_; // @GuardedBy mutex_
+  int nextConnId_;    // name_ + nextConnId_用于标识一个连接
+  mutable MutexLock mutex_; 
+  TcpConnectionPtr connection_; // @GuardedBy mutex_ // Connector连接成功以后，得到一个TcpConnection
 };
 
 }

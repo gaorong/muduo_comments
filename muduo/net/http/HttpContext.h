@@ -22,6 +22,7 @@ namespace net
 
 class Buffer;
 
+//协议简析类
 class HttpContext : public muduo::copyable
 {
  public:
@@ -62,8 +63,8 @@ class HttpContext : public muduo::copyable
  private:
   bool processRequestLine(const char* begin, const char* end);
 
-  HttpRequestParseState state_;
-  HttpRequest request_;
+  HttpRequestParseState state_;  //请求解析状态
+  HttpRequest request_;			//http请求
 };
 
 }

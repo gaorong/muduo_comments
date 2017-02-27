@@ -25,6 +25,7 @@ void HttpResponse::appendToBuffer(Buffer* output) const
 
   if (closeConnection_)
   {
+	// 如果是短连接，不需要告诉浏览器Content-Length，浏览器也能正确处理
     output->append("Connection: close\r\n");
   }
   else

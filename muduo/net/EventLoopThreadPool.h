@@ -54,13 +54,15 @@ class EventLoopThreadPool : boost::noncopyable
 
  private:
 
-  EventLoop* baseLoop_;
-  string name_;
-  bool started_;
-  int numThreads_;
-  int next_;
-  boost::ptr_vector<EventLoopThread> threads_;
-  std::vector<EventLoop*> loops_;
+  EventLoop* baseLoop_;  // 与Acceptor所属EventLoop相同，即mainReactor(用来关注Accepter事件，而其他subReactor用来关注已连接套接字的事件)
+  string name_;			 //名字
+  bool started_;     //是否启动
+  int numThreads_;  //线程数
+  int next_;     // 新连接到来，所选择的EventLoop对象下标
+  boost::ptr_vector<EventLoopThread> threads_;	//io线程列表，用ptr_vector销毁的时候会自动销毁它所维护的EventLoopThread
+
+  //EvenLoop列表，一个io线程对应一个Evenloop对象，因为都是栈上的对象(参看EvenLoopThread类)，所以只需要vector维护就可以
+  std::vector<EventLoop*> loops_;		 
 };
 
 }

@@ -21,6 +21,7 @@
 using namespace muduo;
 using namespace muduo::net;
 
+
 TcpServer::TcpServer(EventLoop* loop,
                      const InetAddress& listenAddr,
                      const string& nameArg,
@@ -29,7 +30,7 @@ TcpServer::TcpServer(EventLoop* loop,
     ipPort_(listenAddr.toIpPort()),
     name_(nameArg),
     acceptor_(new Acceptor(loop, listenAddr, option == kReusePort)),
-    threadPool_(new EventLoopThreadPool(loop, name_)),
+    threadPool_(new EventLoopThreadPool(loop, name_)), //初始化线程池
     connectionCallback_(defaultConnectionCallback),
     messageCallback_(defaultMessageCallback),
     nextConnId_(1)
@@ -61,6 +62,7 @@ void TcpServer::setThreadNum(int numThreads)
   assert(0 <= numThreads);
   threadPool_->setThreadNum(numThreads);
 }
+
 // 该函数多次调用是无害的
 // 该函数可以跨线程调用
 void TcpServer::start()
@@ -78,6 +80,7 @@ void TcpServer::start()
 void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
 {
   loop_->assertInLoopThread();
+  //按照轮叫的方式选择一个EvenLoop
   EventLoop* ioLoop = threadPool_->getNextLoop();
   char buf[64];
   snprintf(buf, sizeof buf, "-%s#%d", ipPort_.c_str(), nextConnId_);
@@ -87,6 +90,8 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
   LOG_INFO << "TcpServer::newConnection [" << name_
            << "] - new connection [" << connName
            << "] from " << peerAddr.toIpPort();
+
+
   InetAddress localAddr(sockets::getLocalAddr(sockfd));
   // FIXME poll with zero timeout to double confirm the new connection
   // FIXME use make_shared if necessary
@@ -106,6 +111,8 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
   //下面是注册TcpServer的回调函数
   conn->setCloseCallback(
       boost::bind(&TcpServer::removeConnection, this, _1)); // FIXME: unsafe
+
+  //让所属的EvenLoop调用connectEstablished
   ioLoop->runInLoop(boost::bind(&TcpConnection::connectEstablished, conn));
 }
 

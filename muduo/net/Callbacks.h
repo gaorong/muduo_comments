@@ -21,6 +21,7 @@ namespace muduo
 
 // Adapted from google-protobuf stubs/common.h
 // see License in muduo/base/Types.h
+//向下转型
 template<typename To, typename From>
 inline ::boost::shared_ptr<To> down_pointer_cast(const ::boost::shared_ptr<From>& f)
 {
