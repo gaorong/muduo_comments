@@ -101,6 +101,7 @@ class MutexLock : boost::noncopyable
  	//友元
   friend class Condition;
 
+	//这个局部对象用在Condition类的wait时候
   class UnassignGuard : boost::noncopyable
   {
    public:
