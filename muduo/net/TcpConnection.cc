@@ -359,7 +359,7 @@ void TcpConnection::connectDestroyed()
   {
     setState(kDisconnected);
     channel_->disableAll();
-    //如果没有回掉过用户的回调函数就回掉，否则就不在回掉了
+    //如果没有回掉过用户的回调函数就回掉，否则就不再回掉了
     connectionCallback_(shared_from_this());
   }
   channel_->remove();    //从Looper中删除
@@ -444,7 +444,7 @@ void TcpConnection::handleClose()
 
   //返回自身的shared_ptr对象，TcpConnection的引用计数又加1
   //在断开的过程中，到此为止有TcpConnection的引用计数为3
-  //第一处在TcpServer的connecton列表里
+  //第一处在TcpServer的connection列表里
   //第二处在Channel::handeldEvent中提升了一个
   //第三处是下面的guardThis，
   TcpConnectionPtr guardThis(shared_from_this());
@@ -460,6 +460,8 @@ void TcpConnection::handleClose()
   //但是在用boost::function的时候又增加一个，所以一增一减还是3
   
   //但是出了这个函数之后TcpConnection的引用计数就变为2，guardThis被析构了
+
+  //参见  TcpServer::removeConnectionInLoop
 }
 
 void TcpConnection::handleError()

@@ -28,7 +28,9 @@ const size_t Buffer::kInitialSize;
 ssize_t Buffer::readFd(int fd, int* savedErrno)
 {
   // saved an ioctl()/FIONREAD call to tell how much to read
-  // 节省一次ioctl系统调用（获取有多少可读数据）
+  // 节省一次ioctl系统调用（获取有多少可读数据），因为如果还使用堆上空间的话需要知道有多少
+  // 可读数据，才能为其分配足够的空间，而首先使用栈上空间可以避免系统调用，并且一般来说不需要重新分配空间
+  // 所以用栈上空间进行权宜之计。
   char extrabuf[65536];  //足够大的缓冲区，保证一次性把内核缓冲区中的内容全部读走
   struct iovec vec[2];
   const size_t writable = writableBytes();
